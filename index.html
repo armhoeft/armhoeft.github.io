@@ -33,8 +33,8 @@
         .attr('stroke', 'black');
 
     async function init() {
-        const SUMMER_DATA = await d3.csv("https://github.com/armhoeft/armhoeft.github.io/blob/main/data/summer.csv");
-        const WINTER_DATA = await d3.csv("https://github.com/armhoeft/armhoeft.github.io/blob/main/data/winter.csv");
+        const SUMMER_DATA = await d3.csv("https://armhoeft.github.io/data/summer.csv");
+        const WINTER_DATA = await d3.csv("https://armhoeft.github.io/data/winter.csv");
         const xScale = d3.scaleLinear()
             .domain([1880, 2010])
             .range([0, 1400]);
