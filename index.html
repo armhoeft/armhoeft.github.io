@@ -1,16 +1,73 @@
 <!DOCTYPE html>
-<script src="https://d3js.org/d3.v5.min.js"></script>
-<script src="https://rawgit.com/susielu/d3-annotation/master/d3-annotation.min.js"></script>
-<script src="./visualization.js"></script>
-
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>CS 416 Data Visualization: Narrative Visualization Project</title>
 </head>
-<body onload='init()'>
-    <svg width=1500 height=700 x=10 y=10></svg>
-    <script>
-    </script>
+<body onload="init()">
+<svg width=1500 height=1000></svg>
+<script src="https://d3js.org/d3.v5.min.js"></script>
+<script src="https://rawgit.com/susielu/d3-annotation/master/d3-annotation.min.js"></script>
+<script>
+    const canvas = d3.select('svg');
+    canvas.append('image')
+        .attr('xlink:href', "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Olympic_rings_without_rims.svg/2560px-Olympic_rings_without_rims.svg.png")
+        .attr('width', 200)
+        .attr('height', 80)
+        .attr('y', 10);
+    canvas.append('text')
+        .attr('x', 220)
+        .attr('y', 50)
+        .attr('stroke', 'blue')
+        .attr('fill', 'orange')
+        .style('font-size', 50)
+        .text("Data-Driven Olympics");
+    canvas.append('text')
+        .attr('x', 220)
+        .attr('y', 85)
+        .attr('fill', 'blue')
+        .style('font-size', 24)
+        .text("Exploring Olympic medals by year, IOC nation, and event category");
+    canvas.append('path')
+        .attr('d', d3.line()([[10, 100], [1490, 100]]))
+        .attr('stroke', 'black');
+
+    async function init() {
+        const SUMMER_DATA = await d3.csv("https://github.com/armhoeft/armhoeft.github.io/blob/main/data/summer.csv");
+        const WINTER_DATA = await d3.csv("https://github.com/armhoeft/armhoeft.github.io/blob/main/data/winter.csv");
+        const xScale = d3.scaleLinear()
+            .domain([1880, 2010])
+            .range([0, 1400]);
+        const xAxis = d3.axisBottom(xScale)
+            .tickValues([1880, 1890, 1900, 1910, 1920, 1930, 1940, 1950, 1960, 1970, 1980, 1990, 2000, 2010])
+            .tickFormat(d3.format("~y"));
+
+        const yScale = d3.scaleLinear()
+            .domain([0, 500])
+            .range([800, 100]);
+        const yAxis = d3.axisLeft(yScale)
+            .tickValues([0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500])
+            .tickFormat(d3.format("~s"));
+
+        d3.select('svg').append('g')
+            .attr("transform", "translate(" + 50 + "," + 75 + ")");
+        d3.select("svg").append("g")
+            .attr("transform", "translate(" + 50 + "," + 50 + ")")
+            .call(yAxis);
+        d3.select("svg").append("g")
+            .attr("transform", "translate(" + 50 + "," + 850 + ")")
+            .call(xAxis)
+    }
+
+    function groupData(data, groupBy) {
+        const groups = {};
+        data.forEach(function (d, i) {
+            const k = d[groupBy];
+            groups[k] || (groups[k] = []);
+            groups[k].push(d);
+        });
+        return data;
+    }
+</script>
 </body>
 </html>
