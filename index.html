@@ -3,59 +3,132 @@
 <head>
     <meta charset="UTF-8">
     <title>CS 416 Data Visualization: Narrative Visualization Project</title>
+    <link rel="icon" type="image/png"
+          href="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Olympic_rings_without_rims.svg/2560px-Olympic_rings_without_rims.svg.png"
+    />
 </head>
-<body onload="init()" style="font-family: Verdana">
+<style>
+    body {
+        background-color: #D5D8DC;
+        font-family: Verdana;
+    }
+
+    .heading {
+        width: 1500px;
+        height: 100px;
+        fill: #EAECEE;
+    }
+
+    .heading-title {
+        stroke: #34495E;
+        fill: #D35400;
+        font-weight: bold;
+        font-variant: small-caps;
+        font-size: 50px;
+    }
+
+    .heading-subtitle {
+        fill: #34495E;
+        font-size: 20px;
+    }
+
+    .heading-img {
+        width: 200px;
+        height: 80px;
+    }
+
+    .bar {
+        fill: #34495E;
+    }
+
+    div.bar-tooltip {
+        position: absolute;
+        padding: 0.5rem;
+        background: #EAECEE;
+        color: #34495E;
+        border: 2.5px solid #FFFFFF;
+        border-radius: 4px;
+        pointer-events: none;
+        font-size: small;
+    }
+
+    div.bar-tooltip-header {
+        font-size: medium;
+        color: #D35400;
+        text-align: center;
+        font-weight: bold;
+        border-bottom: 1px solid #34495E;
+        padding-bottom: 5px;
+        margin-bottom: 5px;
+    }
+
+    div.bar-tooltip-content {
+        text-align: justify;
+        font-weight: normal;
+        white-space: pre-wrap;
+    }
+
+    div.bar-tooltip-footer {
+        text-align: justify;
+        font-weight: normal;
+        margin-top: 10px;
+    }
+</style>
+<body onload="init()">
 <svg width=1500 height=1000></svg>
 <script src="https://d3js.org/d3.v5.min.js"></script>
 <script src="https://rawgit.com/susielu/d3-annotation/master/d3-annotation.min.js"></script>
 <script>
     const TITLE = "Data-Driven Olympics";
-    const SUBTITLE = "Exploring Olympic medal count by year, IOC nation, and event category";
+    const SUBTITLE = "Exploring Summer Olympic Games medal count by year, IOC nation, and event category";
 
     const svg = d3.select('svg');
+    svg.append('rect')
+        .attr('class', 'heading');
     svg.append('image')
+        .attr('class', 'heading-img')
         .attr('xlink:href', "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Olympic_rings_without_rims.svg/2560px-Olympic_rings_without_rims.svg.png")
-        .attr('width', 200)
-        .attr('height', 80)
         .attr('y', 10);
     svg.append('text')
+        .attr('class', 'heading-title')
         .attr('x', 220)
         .attr('y', 50)
-        .attr('stroke', 'blue')
-        .attr('fill', 'orange')
-        .style('font-family', 'Garamond')
-        .style('font-variant', 'small-caps')
-        .style('font-size', 50)
         .text(TITLE);
     svg.append('text')
+        .attr('class', 'heading-subtitle')
         .attr('x', 220)
         .attr('y', 82)
-        .attr('fill', 'blue')
-        .style('font-size', 20)
         .text(SUBTITLE);
     svg.append('path')
-        .attr('d', d3.line()([[10, 100], [1490, 100]]))
+        .attr('d', d3.line()([[0, 100], [1500, 100]]))
         .attr('stroke', 'black');
 
     const X_SCALE = d3.scaleLinear().domain([1880, 2020]).range([0, 1380]);
     const X_SCALE_BAND = d3.scaleBand().range([0, 1380]).padding(0.4);
     const Y_SCALE = d3.scaleLinear().domain([0, 2200]).range([900, 100]);
 
-    // const SUMMER_DATA = d3.csv("https://armhoeft.github.io/data/summer.csv");
-    // const WINTER_DATA = d3.csv("https://armhoeft.github.io/data/winter.csv");
-
     async function displayMedalsByYear() {
         let yearToMedals = {};
         await d3.csv("https://armhoeft.github.io/data/summer.csv", function (d) {
             const k = d.Year;
             console.log(k);
-            yearToMedals[k] || (yearToMedals[k] = {year: k, yearAligned: parseInt(k) + 6.625, count: 0});
+            if (!yearToMedals[k]) {
+                yearToMedals[k] = {
+                    year: k,
+                    yearAligned: parseInt(k) + 6.625,
+                    city: d.City,
+                    count: 0
+                };
+            }
             yearToMedals[k].count++;
         });
 
         X_SCALE_BAND.domain(d3.values(yearToMedals).map(function (d) {
             return d.yearAligned;
         }));
+
+        let tooltip = d3.select('body').append('div')
+            .attr('class', 'bar-tooltip');
         d3.select('svg').selectAll(".bar")
             .data(d3.values(yearToMedals))
             .enter()
@@ -74,7 +147,40 @@
             .attr("height", function (d, i) {
                 return 930 - Y_SCALE(d.count);
             })
-            .attr('fill', '#777777');
+            .on('mouseover', function (d, i) {
+                d3.select(this).transition()
+                    .duration(50)
+                    .attr('opacity', 0.5);
+                tooltip.transition()
+                    .duration(50)
+                    .style('visibility', 'visible');
+
+                tooltip.html('')
+                    .style('left', (d3.event.pageX + 20) + "px")
+                    .style('top', (d3.event.pageY - 15) + "px")
+                    .append('div')
+                    .attr('class', 'bar-tooltip-header')
+                    .text(d.year);
+
+                const tooltipContent = tooltip.append('div').attr('class', 'bar-tooltip-content');
+                tooltipContent.append('div').text('Host City:\t\t' + d.city);
+                tooltipContent.append('div').text('Medal Count:\t' + d.count);
+
+                tooltip.append('div')
+                    .attr('class', 'bar-tooltip-footer')
+                    .text('Click for details');
+            })
+            .on('mouseout', function (d, i) {
+                d3.select(this).transition()
+                    .duration(50)
+                    .attr('opacity', 1);
+                tooltip.transition()
+                    .duration(1000)
+                    .style('visibility', 'hidden');
+            })
+            .on('click', function (d, i) {
+                console.log('Clicked it!')
+            });
         console.log('Done');
     }
 
@@ -97,7 +203,7 @@
             .attr('id', 'chart-area')
             .append('rect')
             .attr('transform', 'translate(1,100)')
-            .attr('fill', '#F8F8F8')
+            .attr('fill', '#EBEDEF')
             .attr('width', 1380)
             .attr('height', 800);
 
@@ -116,16 +222,6 @@
             .text("Medal Count");
 
         await displayMedalsByYear();
-    }
-
-    function groupData(data, groupBy) {
-        const groups = {};
-        data.forEach(function (d, i) {
-            const k = d[groupBy];
-            groups[k] || (groups[k] = []);
-            groups[k].push(d);
-        });
-        return data;
     }
 </script>
 </body>
