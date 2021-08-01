@@ -27,36 +27,59 @@
         .attr('y', 85)
         .attr('fill', 'blue')
         .style('font-size', 24)
-        .text("Exploring Olympic medals by year, IOC nation, and event category");
+        .text("Exploring Olympic medal count by year, IOC nation, and event category");
     canvas.append('path')
         .attr('d', d3.line()([[10, 100], [1490, 100]]))
         .attr('stroke', 'black');
 
+    const X_SCALE = d3.scaleLinear().domain([1880, 2010]).range([0, 1380]);
+    const Y_SCALE = d3.scaleLinear().domain([0, 500]).range([900, 100]);
+
+    const SUMMER_DATA = d3.csv("https://armhoeft.github.io/data/summer.csv");
+    const WINTER_DATA = d3.csv("https://armhoeft.github.io/data/winter.csv");
+
+    async function displayMedalsByYear() {
+        const chart = d3.select('#chart-area');
+        chart.data(SUMMER_DATA).enter()
+        .append('rect')
+        .attr('class', 'bar')
+        .attr('x', function(d, i) { return X_SCALE})
+    }
+
     async function init() {
-        const SUMMER_DATA = await d3.csv("https://armhoeft.github.io/data/summer.csv");
-        const WINTER_DATA = await d3.csv("https://armhoeft.github.io/data/winter.csv");
-        const xScale = d3.scaleLinear()
-            .domain([1880, 2010])
-            .range([0, 1400]);
-        const xAxis = d3.axisBottom(xScale)
+        const xAxis = d3.axisBottom(X_SCALE)
             .tickValues([1880, 1890, 1900, 1910, 1920, 1930, 1940, 1950, 1960, 1970, 1980, 1990, 2000, 2010])
             .tickFormat(d3.format("~y"));
 
-        const yScale = d3.scaleLinear()
-            .domain([0, 500])
-            .range([800, 100]);
-        const yAxis = d3.axisLeft(yScale)
+        const yAxis = d3.axisLeft(Y_SCALE)
             .tickValues([0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500])
             .tickFormat(d3.format("~s"));
 
-        d3.select('svg').append('g')
-            .attr("transform", "translate(" + 50 + "," + 75 + ")");
-        d3.select("svg").append("g")
-            .attr("transform", "translate(" + 50 + "," + 50 + ")")
+        // Create display canvas
+        const canvas = d3.select('svg').append('g')
+            .attr('id', 'canvas')
+            .attr('transform', 'translate(80,30)');
+        // Display Axes
+        canvas.append('g')
             .call(yAxis);
-        d3.select("svg").append("g")
-            .attr("transform", "translate(" + 50 + "," + 850 + ")")
+        canvas.append('g')
+            .attr('transform', "translate(0,900)")
             .call(xAxis)
+        canvas.append('text')
+            .attr('x', -550)
+            .attr('y', -40)
+            .attr('transform', 'rotate(-90)')
+            .attr('fill', 'black')
+            .style('font-size', 16)
+            .text("Medal Count");
+        canvas.append('rect')
+            .attr('id', 'chart-area')
+            .attr('transform', 'translate(1,100)')
+            .attr('fill', '#F8F8F8')
+            .attr('width', 1380)
+            .attr('height', 800);
+
+        await displayMedalsByYear();
     }
 
     function groupData(data, groupBy) {
