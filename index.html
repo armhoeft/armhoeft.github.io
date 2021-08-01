@@ -145,6 +145,7 @@
         await d3.csv("https://armhoeft.github.io/data/summer.csv", function (d) {
             const k = d.Year;
             const c = d.Country;
+            const s = d.Discipline;
 
             const thisEntry = {
                 sport: d.Sport,
@@ -176,15 +177,25 @@
                     silver: 0,
                     bronze: 0
                 },
-                countGold: 0,
-                countSilver: 0,
-                countBronze: 0,
                 country: d.Country,
+                byCategory: {},
                 medals: []
             });
             data[k].byCountry[c].count++;
             data[k].byCountry[c].countByType[thisEntry.medal.toLowerCase()]++;
             data[k].byCountry[c].medals.push(thisEntry);
+
+            data[k].byCountry[c].byCategory[s] || (data[k].byCountry[c].byCategory[s] = {
+                category: s,
+                count: 0,
+                countByType: {
+                    gold: 0,
+                    silver: 0,
+                    bronze: 0
+                }
+            });
+            data[k].byCountry[c].byCategory[s].count++;
+            data[k].byCountry[c].byCategory[s].countByType[thisEntry.medal.toLowerCase()]++;
         });
         return data;
     }
@@ -308,7 +319,7 @@
             .attr('height', 401);
 
         const xAxis = d3.axisBottom(xScale);
-        const yAxis = d3.axisLeft(yScale).tickFormat(d3.format("~s"));
+        const yAxis = d3.axisLeft(yScale);
 
         // Display Axes
         canvas.append('g')
@@ -341,8 +352,8 @@
             .domain((selectedData && d3.keys(selectedData.byCountry).sort()) || [])
             .range([0, 880])
             .padding(0.4);
-        const yScale = d3.scaleLog()
-            .domain([Math.min(...allCounts), Math.max(...allCounts)])
+        const yScale = d3.scaleLinear()
+            .domain([0, Math.max(...allCounts)])
             .range([400, 0]);
 
         await resetSecondaryChartCanvas(selectedData, xScale, yScale);
@@ -378,7 +389,7 @@
                     .duration(1000)
                     .style('visibility', 'hidden');
             })
-            // .on('click', displaySecondaryChartContent);
+            .on('click', displayTertiaryChartContent);
     }
 
     async function displaySecondaryChartTooltipContent(d, i) {
@@ -429,12 +440,151 @@
             .text('Click for more details');
     }
 
+    async function resetTertiaryChartCanvas(data, xScale, yScale) {
+        // Create canvas
+        const canvas = d3.select('#tertiary-canvas')
+            .html('')
+            .append('g')
+            .attr('id', 'tertiary-chart')
+            .attr('transform', 'translate(80,30)');
+
+        // Display chart-area
+        canvas.append('g')
+            .attr('id', 'tertiary-chart-area')
+            .append('rect')
+            .attr('class', 'chart-area')
+            .attr('y', -1)
+            .attr('width', 380)
+            .attr('height', 401);
+
+        const xAxis = d3.axisBottom(xScale);
+        const yAxis = d3.axisLeft(yScale).tickFormat(d3.format("~s"));
+
+        // Display Axes
+        canvas.append('g')
+            .attr('transform', "translate(0,400)")
+            .call(xAxis)
+            .selectAll('text')
+            .attr('class', 'axis-label-slant')
+            .attr('dx', '-6px')
+            // .attr('dy', '-2px')
+            .attr('transform', 'rotate(-45)');
+        canvas.append('g')
+            .call(yAxis);
+        canvas.append('text')
+            .attr('x', -275)
+            .attr('y', -40)
+            .attr('transform', 'rotate(-90)')
+            .attr('fill', 'black')
+            .style('font-size', 16)
+            .text("Event Category");
+    }
+
+    async function displayTertiaryChart(data, ind) {
+        await displayTertiaryChartContent(data, ind);
+    }
+
+    async function displayTertiaryChartContent(selectedData, selectedInd) {
+
+        const allCounts = (selectedData && d3.values(selectedData.byCategory).map(d => d.count)) || [0, 0];
+        const xScale = d3.scaleBand()
+            .domain((selectedData && d3.keys(selectedData.byCategory).sort()) || [])
+            .range([0, 380])
+            .padding(0.4);
+        const yScale = d3.scaleLinear()
+            .domain([0, Math.max(...allCounts)])
+            .range([400, 0]);
+
+        await resetTertiaryChartCanvas(selectedData, xScale, yScale);
+
+        if (!selectedData)
+            return;
+
+        // Populate tertiary chart data
+        d3.select('#tertiary-chart-area').selectAll('.bar')
+            .data(d3.values(selectedData.byCategory))
+            .enter()
+            .append('rect')
+            .attr('class', 'bar')
+            .attr('x', d => xScale(d.category))
+            .attr("y", d => yScale(d.count))
+            .attr("width", xScale.bandwidth)
+            .attr("height", d => 400 - yScale(d.count))
+            .on('mouseover', function (d, i) {
+                d3.select(this).transition()
+                    .duration(50)
+                    .attr('opacity', 0.5);
+                d3.select('#tertiary-tooltip').transition()
+                    .duration(50)
+                    .style('visibility', 'visible');
+
+                displayTertiaryChartTooltipContent(d, i);
+            })
+            .on('mouseout', function (d, i) {
+                d3.select(this).transition()
+                    .duration(50)
+                    .attr('opacity', 1);
+                d3.select('#tertiary-tooltip').transition()
+                    .duration(1000)
+                    .style('visibility', 'hidden');
+            });
+    }
+
+    async function displayTertiaryChartTooltipContent(d, i) {
+        d3.select('#tertiary-tooltip').html('')
+            .style('left', (d3.event.pageX + 20) + "px")
+            .style('top', (d3.event.pageY - 75) + "px")
+            .append('div')
+            .attr('class', 'tooltip-header')
+            .text(d.category);
+
+        const tooltipContent = d3.select('#tertiary-tooltip')
+            .append('div')
+            .attr('class', 'tooltip-content');
+        tooltipContent.append('div').text('Overall Medal Count:\t' + d.count);
+        const goldDiv = tooltipContent.append('div');
+        goldDiv.append('svg').attr('class', 'tooltip-icon-medal')
+            .append('circle')
+            .attr('cx', 5)
+            .attr('cy', 5)
+            .attr('r', 5)
+            .style('fill', 'gold');
+
+        const silverDiv = tooltipContent.append('div');
+        silverDiv.append('svg').attr('class', 'tooltip-icon-medal')
+            .append('circle')
+            .attr('cx', 5)
+            .attr('cy', 5)
+            .attr('r', 5)
+            .style('fill', 'silver');
+
+        const bronzeDiv = tooltipContent.append('div');
+        bronzeDiv.append('svg').attr('class', 'tooltip-icon-medal')
+            .append('circle')
+            .attr('cx', 5)
+            .attr('cy', 5)
+            .attr('r', 5)
+            .style('fill', '#A1887F');
+
+        goldDiv.append('text')
+            .text('Gold Medals:\t\t' + d.countByType.gold);
+        silverDiv.append('text')
+            .text('Silver Medals:\t\t' + d.countByType.silver);
+        bronzeDiv.append('text')
+            .text('Bronze Medals:\t' + d.countByType.bronze);
+
+        d3.select('#tertiary-tooltip').append('div')
+            .attr('class', 'tooltip-footer');
+    }
+
+
     async function init() {
         await displayPageHeader();
 
         const chartData = await getApplicationData();
         await displayPrimaryChart(chartData);
         await displaySecondaryChart();
+        await displayTertiaryChart();
     }
 </script>
 </body>
